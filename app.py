@@ -37,13 +37,99 @@ st.markdown('''
 
 @st.cache_resource
 def rutas():
-    datos = Path(__file__).resolve().parent / "datos"
-    if not (datos / "BD_COBERTURA_VEGETAL.sqlite").exists():
-        raise FileNotFoundError(
-            "No se encontró datos/BD_COBERTURA_VEGETAL.sqlite"
-        )
-    return datos
+    import hashlib
+    import requests
 
+    datos = Path(__file__).resolve().parent / "datos"
+    datos.mkdir(parents=True, exist_ok=True)
+
+    archivo = datos / "TB_COBERTURA_GEOM.gpkg"
+
+    url = (
+        "https://media.githubusercontent.com/media/"
+        "RodriCueva/-visor-cobertura-vegetal/"
+        "372775d/datos/TB_COBERTURA_GEOM.gpkg"
+    )
+
+    sha_esperado = (
+        "d35b7022c68c99f7848af3d6279f82e8"
+        "cfcfc9ab80a01351b6b9a666c17b70e2"
+    )
+
+    tamano_esperado = 501075968
+
+    def verificar(ruta):
+        if not ruta.exists():
+            return False
+
+        if ruta.stat().st_size != tamano_esperado:
+            return False
+
+        h = hashlib.sha256()
+
+        with open(ruta, "rb") as f:
+            for bloque in iter(
+                lambda: f.read(8 * 1024 * 1024), b""
+            ):
+                h.update(bloque)
+
+        return h.hexdigest() == sha_esperado
+
+    if not verificar(archivo):
+
+        temporal = datos / "TB_COBERTURA_GEOM.descarga"
+
+        try:
+            with st.spinner(
+                "Preparando la base geoespacial..."
+            ):
+                with requests.get(
+                    url,
+                    stream=True,
+                    timeout=(30, 120)
+                ) as respuesta:
+
+                    respuesta.raise_for_status()
+
+                    h = hashlib.sha256()
+                    total = 0
+
+                    with open(temporal, "wb") as f:
+                        for bloque in respuesta.iter_content(
+                            chunk_size=8 * 1024 * 1024
+                        ):
+                            if bloque:
+                                f.write(bloque)
+                                h.update(bloque)
+                                total += len(bloque)
+
+                    if total != tamano_esperado:
+                        raise RuntimeError(
+                            "Tamaño de descarga incorrecto."
+                        )
+
+                    if h.hexdigest() != sha_esperado:
+                        raise RuntimeError(
+                            "SHA256 de descarga incorrecto."
+                        )
+
+            temporal.replace(archivo)
+
+        finally:
+            if temporal.exists():
+                temporal.unlink()
+
+    for nombre in [
+        "BD_COBERTURA_VEGETAL.sqlite",
+        "TB_MICROCUENCAS_VISOR.gpkg",
+        "TB_COBERTURA_GEOM.gpkg"
+    ]:
+        if not (datos / nombre).exists():
+            raise FileNotFoundError(
+                f"Archivo no encontrado: {datos / nombre}"
+            )
+
+    return datos
 try:
     RESULTADOS = rutas()
 except Exception as exc:

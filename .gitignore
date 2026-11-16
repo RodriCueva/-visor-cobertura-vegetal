@@ -11,4 +11,7 @@ datos/*
 # Permitir solo las tres bases validadas
 !datos/BD_COBERTURA_VEGETAL.sqlite
 !datos/TB_MICROCUENCAS_VISOR.gpkg
-!datos/TB_COBERTURA_GEOM.gpkg
+# GeoPackage grande descargado mediante HTTPS
+
+app_backup_pre_descarga.py
+datos/*.descarga
