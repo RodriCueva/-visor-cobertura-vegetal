@@ -2,5 +2,13 @@ __pycache__/
 *.pyc
 .venv/
 .env
-datos/
+datos_comprimidos/
 *.accdb
+
+# Excluir cualquier dato adicional
+datos/*
+
+# Permitir solo las tres bases validadas
+!datos/BD_COBERTURA_VEGETAL.sqlite
+!datos/TB_MICROCUENCAS_VISOR.gpkg
+!datos/TB_COBERTURA_GEOM.gpkg
